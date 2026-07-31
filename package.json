@@ -1,0 +1,9 @@
+{
+  "name": "liuyao-divination",
+  "private": true,
+  "version": "1.0.0",
+  "description": "六爻问卦 - 周易六爻占卜网站",
+  "engines": {
+    "node": ">=18"
+  }
+}
