@@ -12,7 +12,7 @@ var IS_LOCAL_DEV = (function() {
 
 var AI_ENDPOINT = '/api/interpret';
 var DEEPSEEK_ENDPOINT = 'https://api.deepseek.com/v1/chat/completions';
-var LOCAL_KEY_STORAGE = 'liuyao_local_deepseek_key';
+var LOCAL_KEY_STORAGE = 'DEEPSEEK_KEY';
 
 function getLocalDeepSeekKey() {
   try { return localStorage.getItem(LOCAL_KEY_STORAGE) || ''; } catch(e) { return ''; }
