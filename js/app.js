@@ -233,11 +233,17 @@ var STORAGE_KEY = 'liuyao_history';
 
 // ===== AI 解卦 =====
 
-// 构建卦象描述文本
+// 构建卦象描述文本（优先使用专业装卦的摘要文本，信息更完整）
 function buildHexagramDescription() {
   var result = state.hexagramResult;
   if (!result) return '';
 
+  // 如果有专业装卦（proPaipan.summaryText），直接使用
+  if (result.proPaipan && result.proPaipan.summaryText && result.proPaipan.summaryText.length > 50) {
+    return result.proPaipan.summaryText;
+  }
+
+  // 降级：老版本简单描述
   var hd = result.hexagramData;
   var desc = '卦名：' + hd.fullName + '\n';
   desc += '上卦：' + result.upperTrigram.nature + '（' + result.upperTrigram.name + '）\n';
@@ -315,18 +321,36 @@ function callAIInterpretation(callback) {
 
 // ===== 本地直连 DeepSeek（仅本地开发使用）=====
 function callDeepSeekDirect(hexDesc, apiKey, callback) {
-  var systemPrompt = '你是一位精通六爻卦象的国学顾问。你擅长用通俗易懂、温暖有力的语言为用户解读卦象。你的风格是：像一个有智慧、有阅历的朋友在和你深谈——既有洞察力，又有温度。你不说套话，不说空话，每一句都落在用户的具体处境上。';
   var categoryName = (QUESTION_CATEGORIES[state.category] || QUESTION_CATEGORIES.general).name;
-  var userPrompt = '用户用六爻占了一卦，请你为他深度解读。\n\n' +
-    '【用户的问题】\n' + state.question + '\n\n' +
-    '【问题类别】\n' + categoryName + '\n\n' +
-    '【卦象信息】\n' + hexDesc + '\n\n' +
-    '请按以下结构生成解读，用加粗小标题分段：\n\n' +
-    '第一个小标题「当前处境」：用2-3句点明卦象映射到用户现实中的状态。要具体到用户的问题场景。\n\n' +
-    '第二个小标题（根据问题类型自拟）：这是分析的核心段落，4-6句。用比喻和意象来分析，围绕用户具体问题展开。\n\n' +
-    '第三个小标题「建议与方向」：3-4句具体建议，落地可操作。\n\n' +
-    '最后一个短段落：一句有力量的收尾。\n\n' +
-    '要求：全文600-900字；用"你"对话；绝对不要用"本卦""变卦""动爻""爻辞""用神""世应""六亲""相害""相合"等术语；不做绝对判断；涉及健康提醒就医、涉及法律提醒咨询律师。';
+
+  var yongShenMap = {
+    career:   { yongShen: '官鬼爻（为事业、职位、领导），次看父母爻（文书、机会、公司）、妻财爻（薪酬、收益）、世爻（求测人自身状态）', relation: '世为求测人，应为职位/公司/事体；官鬼持世或生世为吉，克世则压力大、岗位不稳' },
+    love:     { yongShen: '以妻财爻（男占感情/女友/妻子）或官鬼爻（女占感情/男友/丈夫）为用神；兼看世应关系（世=己，应=对方）', relation: '世应相合相生主和睦，相冲相克主矛盾；用神旺相、持世或生合世爻为吉，空亡/休囚/被克为不利' },
+    wealth:   { yongShen: '妻财爻为用神（财富、本金、收益）；次看子孙爻（财源、客户、机会）、兄弟爻（破财、劫财、竞争）、世爻（自身承受力）', relation: '财爻旺相、子孙动而生财为吉；兄动克财为破财之象；财持世或生合世爻易得财' },
+    health:   { yongShen: '官鬼爻为用神（疾病、病灶）；次看子孙爻（医药、医生、克制疾病之力）、世爻（自身元气）、父母爻（劳累、思虑、压力）', relation: '官鬼休囚安静、子孙旺动克制官鬼为吉；官鬼持世克世或多官鬼为病多反复' },
+    study:    { yongShen: '父母爻为用神（文书、录取、学业成果）；次看官鬼爻（名次、压力、考试运）、子孙爻（思维、悟性、发挥）、世爻（自身努力）', relation: '父母旺相、官生父母为利；世爻旺相持或生合父母，主自身努力有回报' },
+    decision: { yongShen: '世爻为求测人（立场、状态）；应为所选之事/对方；A/B两选分别参看变卦与本卦指向的六亲力量，另看动爻、合冲指向', relation: '世旺则有能力承受选择结果；应生合世为所选方向有利，克冲世为不利；动爻生合何卦何卦更有推动力' },
+    general:  { yongShen: '综合取用神：先看世应关系，再按具体问题倾向取最相关的六亲；动爻为重，静卦看旺衰', relation: '世为己，应为事/人；生合为助，克冲为阻' }
+  };
+  var ys = yongShenMap[state.category] || yongShenMap.general;
+
+  var systemPrompt = '你是一位精通京房六爻纳甲体系的资深国学顾问，擅长用专业而直白的方式为问者解读卦象。你精通世应生克、六亲取象、月建日辰旺衰、动爻卦变、空亡冲合。你的风格是：像一位经验丰富、温和笃定的老师与朋友，不说空话套话，每一段都落在用户的具体问题上；专业术语可以使用，但每个术语后面必须用一句话翻译成用户能理解的人话。结论必须明确：利/不利、选A/选B、时机何时、风险点在哪、怎么应对。';
+
+  var userPrompt = '请用六爻纳甲断卦法，为我深度解读以下这一卦。请严格按下面的结构输出，每个部分用加粗小标题分段：\n\n' +
+
+    '=== 用户输入 ===\n【具体问题】' + state.question + '\n【问题类别】' + categoryName + '\n\n' +
+    '=== 六爻专业排盘 ===\n' + hexDesc + '\n\n' +
+    '=== 断卦参考（供你使用但不要直接复述）===\n· 本类问题用神参考：' + ys.yongShen + '\n· 世应/关系要点：' + ys.relation + '\n\n' +
+
+    '====== 请按以下 6 个部分解读 ======\n\n' +
+    '① **第一部分·卦象总论**（2-3句）：点明本卦/变卦的卦名、卦性（六合/六冲、卦宫五行），用最通俗比喻说清这卦的整体气质。\n\n' +
+    '② **第二部分·用神与世应关系**（核心分析，4-7句）：明确指出本问题的用神是什么、为什么选；分析世爻（代表自己）的状态（五行、旺相休囚、旬空、月日冲合、是否动爻）；分析应爻与用神状态，以及它们和世爻的生克关系（世生应=我单方面付出；应生世=对方/事体助我；世克应=我能掌控；应克世=对方压我；比和=势均力敌；相合=融洽；相冲=冲突）。每个结论后跟一句人话翻译。\n\n' +
+    '③ **第三部分·能量强弱与动爻变局**（4-7句）：分析月建日辰对用神和世爻的生克冲合；逐一分析每个动爻（如有）的身份、力量、变出的六亲——它是推动力还是阻碍，是吉动还是凶动；静卦则分析静卦中力量最强的二三个爻之间的关系；最后根据本卦→变卦的转换，点明"开始→结束"的整体走向。\n\n' +
+    '④ **第四部分·针对问题的具体断语**（3-5句）：结合以上分析对用户具体问题给出明确判断。感情：走向如何？关键卡点？该进该退？事业：最终能成吗？能驾驭吗？财运：这笔投资能赚吗？风险点？抉择：分别回答选A和选B的结果，给出明确倾向建议，不能两边都好或都坏。\n\n' +
+    '⑤ **第五部分·建议与行动**（3-4条具体建议，逐条列出）：必须可操作，不要"保持好心态"这类空话。建议中至少包含1条具体的时间节点提示（用"X月/节气前后"这种人话）。\n\n' +
+    '⑥ **第六部分·一句收尾**（1句）：一句有力量、温暖笃定、让人心里有方向感的话。\n\n' +
+
+    '硬规则：全文600-1200字；用"你"对话；专业术语必用但首次出现必须跟人话翻译；所有分析都必须紧扣卦中具体爻（如"三爻妻财亥水旬空"），不要"卦象显示"空话；用"大概率/更倾向/建议优先"表明确倾向；涉及健康提醒就医、涉及法律财务请提醒咨询专业人士；加粗小标题用①-⑥格式。';
 
   fetch(DEEPSEEK_ENDPOINT, {
     method: 'POST',
@@ -500,7 +524,7 @@ function renderPage() {
     case 'result':      renderResult(app); break;
     case 'ai-loading':  renderAILoading(app); break;
     case 'ai-result':   renderAIResult(app); break;
-    case 'interpretation': renderInterpretation(app); break;
+    case 'interpretation': state.currentPage = 'result'; renderResult(app); break; // 基础解卦页面已移除，重定向到成卦页
     case 'donation':    renderDonation(app); break;
     case 'history':     renderHistory(app); break;
     default:            renderLanding(app);
@@ -927,6 +951,36 @@ function confirmLine() {
 
     state.currentPage = 'result';
     renderPage();
+
+    // ===== 成卦后，后台静默预加载 AI 解卦（减少用户点击后的等待）=====
+    try {
+      if (typeof callAIInterpretation === 'function') {
+        state.aiPreloading = true;
+        callAIInterpretation(function (text, error) {
+          state.aiPreloading = false;
+          if (error) {
+            // 预加载失败不打扰用户，仅记录到 state，用户点击时会再试
+            state.aiPreloadError = error;
+            return;
+          }
+          // 预加载成功：写入缓存并更新历史
+          state.aiInterpretation = text;
+          state.aiInterpretationHexId = state.hexagramResult && state.hexagramResult.hexagramData
+            ? state.hexagramResult.hexagramData.number : null;
+          state.aiPreloadError = null;
+          if (state.currentRecordId) {
+            var idx = -1;
+            for (var ii = 0; ii < state.history.length; ii++) {
+              if (state.history[ii].id === state.currentRecordId) { idx = ii; break; }
+            }
+            if (idx >= 0) {
+              state.history[idx].aiInterpretation = text;
+              try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state.history)); } catch (e) {}
+            }
+          }
+        });
+      }
+    } catch (e) { /* 忽略预加载异常 */ }
   } else {
     state.flipPhase = 'idle';
     state.currentCoins = [];
@@ -934,7 +988,7 @@ function confirmLine() {
   }
 }
 
-// ===== 结果页 =====
+// ===== 结果页（专业六爻排盘版）=====
 function renderResult(container) {
   var result = state.hexagramResult;
   if (!result || !result.hexagramData) {
@@ -944,23 +998,204 @@ function renderResult(container) {
   }
 
   var hd = result.hexagramData;
+  var pro = result.proPaipan;
+  var changingCount = result.changingLines.length;
 
-  // 本卦线条（从上到下显示）
-  var mainLinesHtml = renderHexagramLinesDisplay(result.lines, false, result.changingLines);
-  // 变卦线条
-  var changedLinesHtml = '';
-  if (result.changedHexagram) {
-    changedLinesHtml = renderHexagramLinesDisplay(result.changedHexagram.lines, true, []);
+  // ---- 时间 + 四柱 + 旬空 + 神煞区 ----
+  var headerTop = '';
+  if (pro) {
+    var sz = pro.siZhu;
+    headerTop +=
+      '<div class="card paipan-meta">' +
+        '<div class="paipan-meta-row">' +
+          '<div class="paipan-meta-label">西历时间</div>' +
+          '<div class="paipan-meta-val">' + escapeHtml(pro.dateInfo.solar) + '</div>' +
+          '<div class="paipan-meta-label">农历</div>' +
+          '<div class="paipan-meta-val">' + escapeHtml(pro.dateInfo.lunarHint) + '</div>' +
+        '</div>' +
+        '<div class="paipan-meta-row">' +
+          '<div class="paipan-meta-label">四柱干支</div>' +
+          '<div class="paipan-meta-val pillar-row">' +
+            '<span class="pillar"><span class="pillar-t">年</span>' + sz.nian.text + '</span>' +
+            '<span class="pillar"><span class="pillar-t">月</span>' + sz.yue.text  + '</span>' +
+            '<span class="pillar pillar-active"><span class="pillar-t">日</span>' + sz.ri.text + '</span>' +
+            '<span class="pillar"><span class="pillar-t">时</span>' + sz.shi.text  + '</span>' +
+          '</div>' +
+        '</div>';
+    // 神煞（两排，上8下9）
+    var ss = pro.shenSha;
+    if (ss && ss.length) {
+      var ssHtmlTop = '', ssHtmlBot = '';
+      var cut = Math.ceil(ss.length / 2);
+      ss.forEach(function (item, i) {
+        var v = item.value || '—';
+        var cls = (i < cut ? ssHtmlTop : ssHtmlBot) ? '' : '';
+        var one = '<span class="shensha-item"><span class="shensha-name">' + escapeHtml(item.name) + '</span>:' +
+                  '<span class="shensha-val">' + escapeHtml(v) + '</span></span>';
+        if (i < cut) ssHtmlTop += one; else ssHtmlBot += one;
+      });
+      headerTop +=
+        '<div class="paipan-meta-row">' +
+          '<div class="paipan-meta-label">神煞（日）</div>' +
+          '<div class="paipan-meta-val">' +
+            '<div class="shensha-row">' + ssHtmlTop + '</div>' +
+            '<div class="shensha-row">' + ssHtmlBot + '</div>' +
+          '</div>' +
+        '</div>';
+    }
+    headerTop +=
+        '<div class="paipan-meta-row">' +
+          '<div class="paipan-meta-label">月日建</div>' +
+          '<div class="paipan-meta-val">' +
+            '月建<span class="yuezhi">' + sz.yue.zhiName + '</span>（' + pro.seasonWuxing + '令）　' +
+            '日辰<span class="rizhi">' + sz.ri.zhiName + '</span>　' +
+            '旬空：<span class="xunkong">' + pro.xunKong.kong.join('、') + '</span>（' + pro.xunKong.xun + '）' +
+          '</div>' +
+        '</div>' +
+      '</div>';
   }
 
-  var changingCount = result.changingLines.length;
+  // ---- 专业排盘表格（两列并排：本卦 vs 变卦）----
+  var paipanHtml = '';
+  if (pro && pro.mainLines) {
+    var mainPalace = pro.palace + '：' + hd.fullName;
+    if (pro.liuChong) mainPalace += '(六冲)';
+    if (pro.liuHe)   mainPalace += '(六合)';
+    mainPalace += '　属' + pro.palaceWuxing;
+
+    var changedPalace = '';
+    if (pro.changedMeta) {
+      changedPalace = pro.changedMeta.palace + '：' + (pro.changedMeta.fullName || '变卦');
+      if (pro.changedMeta.liuChong) changedPalace += '(六冲)';
+      if (pro.changedMeta.liuHe)   changedPalace += '(六合)';
+      changedPalace += '　属' + pro.changedMeta.palaceWuxing;
+    }
+
+    // 表头
+    paipanHtml += '<div class="card paipan-card">';
+    paipanHtml +=
+      '<div class="paipan-head">' +
+        '<div class="paipan-head-main">' + escapeHtml(mainPalace) + '</div>' +
+        (changedPalace ? ('<div class="paipan-head-arrow">⇢</div><div class="paipan-head-changed">' + escapeHtml(changedPalace) + '</div>') : '') +
+      '</div>';
+    paipanHtml += '<div class="paipan-table">';
+    // 每行：[六神] [六亲本] [干支本] [爻线+世应动] [→箭头] [六亲变] [干支变] [六神同]
+    // 从上爻→初爻显示
+    for (var pos = 5; pos >= 0; pos--) {
+      var M = pro.mainLines[pos];  // 本卦此爻
+      var liuShen = pro.liuShen[pos] || '';
+      // 本卦左侧列
+      var benLiuQin  = '<span class="lq lq-' + M.liuQin + '">' + M.liuQin + '</span>';
+      var benGanZhi  = '<span class="gz">' + M.ganZhi + '</span>';
+      // 爻线：阳━ ━━，阴━━ ━━，动爻带○/×，世/应标记
+      var lineMark = '';
+      if (M.isYang) lineMark += M.isChanging
+        ? '<span class="yao-line yao-yang yao-dong yang-dong">━━━○━━━</span>'
+        : '<span class="yao-line yao-yang">━━━━━━━━━</span>';
+      else lineMark += M.isChanging
+        ? '<span class="yao-line yao-yin  yao-dong yin-dong">━━　×　━━</span>'
+        : '<span class="yao-line yao-yin">━━　　　━━</span>';
+      var markShiYing = '';
+      if (M.isShi) markShiYing += '<span class="mark-shi">世</span>';
+      if (M.isYing) markShiYing += '<span class="mark-ying">应</span>';
+      var benRightTag = '';
+      if (M.isKong)    benRightTag += '<span class="tag tag-kong">空</span>';
+      if (M.yueChong)  benRightTag += '<span class="tag tag-po">月破</span>';
+      if (M.riChong)   benRightTag += '<span class="tag tag-chong">日冲' + (M.strength === '旺' ? '暗动' : '日破') + '</span>';
+      if (M.yueHe)     benRightTag += '<span class="tag tag-he">月合</span>';
+      if (M.riHe)      benRightTag += '<span class="tag tag-he">日合</span>';
+      var strengthTag  = '<span class="tag tag-strength s-' + M.strength + '">' + M.strength + '</span>';
+
+      // 变卦此爻（如果有变卦盘，则显示变卦那一格）
+      var changedCell = '';
+      if (pro.changedLines && pro.changedLines.length) {
+        var C = pro.changedLines[pos];
+        var isChanged = M.isChanging; // 本爻是否是发动的动爻（才有箭头）
+        var arrowCell = isChanged ? '<div class="yao-arrow">→</div>' : '<div class="yao-arrow-none"></div>';
+        var clineMark = '';
+        if (C.isYang) clineMark = '<span class="yao-line yao-yang">━━━━━━━━━</span>';
+        else          clineMark = '<span class="yao-line yao-yin">━━　　　━━</span>';
+        var cMarkShiYing = '';
+        if (C.isShi) cMarkShiYing += '<span class="mark-shi">世</span>';
+        if (C.isYing) cMarkShiYing += '<span class="mark-ying">应</span>';
+        var cRightTag = '';
+        if (C.isKong) cRightTag += '<span class="tag tag-kong">空</span>';
+        changedCell =
+          arrowCell +
+          '<div class="yao-cell yao-cell-changed">' +
+            '<span class="lq lq-' + C.liuQin + '">' + C.liuQin + '</span>' +
+            '<span class="gz">' + C.ganZhi + '</span>' +
+          '</div>' +
+          clineMark + cMarkShiYing + cRightTag;
+      } else {
+        // 无变卦就空出半格占位，保持对齐
+        changedCell = '<div class="yao-cell-changed-empty"></div><div class="yao-cell-changed-empty"></div>';
+      }
+
+      paipanHtml +=
+        '<div class="paipan-row pos-' + pos + '">' +
+          // 六神（同用左右两边）
+          '<div class="ls ls-left">' + liuShen + '</div>' +
+          '<div class="yao-cell yao-cell-main">' +
+            benLiuQin + benGanZhi +
+          '</div>' +
+          lineMark +
+          '<div class="mark-col">' + markShiYing + strengthTag + benRightTag + '</div>' +
+          changedCell +
+        '</div>';
+    }
+    paipanHtml += '</div>'; // end paipan-table
+    paipanHtml += '</div>'; // end paipan-card
+  } else {
+    // 降级：老版本显示
+    var mainLinesHtml = renderHexagramLinesDisplay(result.lines, false, result.changingLines);
+    var changedLinesHtml = '';
+    if (result.changedHexagram) {
+      changedLinesHtml = renderHexagramLinesDisplay(result.changedHexagram.lines, true, []);
+    }
+    paipanHtml +=
+      '<div class="hexagram-display-row">' +
+        '<div class="hexagram-column">' +
+          '<p class="hexagram-column-label">本卦</p>' +
+          '<div class="card hexagram-box">' +
+            '<div class="hexagram-lines">' + mainLinesHtml + '</div>' +
+            '<p class="hexagram-box-name">' + escapeHtml(hd.name) + '</p>' +
+            '<p class="hexagram-box-sub">' + escapeHtml(hd.fullName) + '</p>' +
+          '</div>' +
+        '</div>' +
+        (result.changedHexagram ?
+          '<div class="hexagram-column">' +
+            '<p class="hexagram-column-label">变卦</p>' +
+            '<div class="card hexagram-box changed">' +
+              '<div class="hexagram-lines">' + changedLinesHtml + '</div>' +
+              '<p class="hexagram-box-name">' + escapeHtml(result.changedHexagram.hexagramData.name) + '</p>' +
+              '<p class="hexagram-box-sub">' + escapeHtml(result.changedHexagram.hexagramData.fullName) + '</p>' +
+            '</div>' +
+          '</div>' : ''
+        ) +
+      '</div>';
+  }
+
+  // ---- AI 解卦按钮文案：根据预加载状态显示 ----
+  var aiBtnLabel = 'AI 智能解卦';
+  var aiBtnHint = '';
+  if (state.aiPreloading && !state.aiInterpretation) {
+    aiBtnLabel = 'AI 正在解卦 · 点击查看进度';
+    aiBtnHint  = '<div class="ai-preload-hint">💡 已在后台为您解卦中，稍等几秒即可查看完整解读</div>';
+  } else if (state.aiInterpretation &&
+             state.aiInterpretationHexId === (hd && hd.number)) {
+    aiBtnLabel = '✨ AI 解卦已就绪 · 点击查看';
+    aiBtnHint  = '<div class="ai-preload-hint ai-ready">✨ 后台已为您生成好解读，点击即可查看</div>';
+  }
 
   container.innerHTML =
     '<div class="result-page">' +
       '<div class="result-inner">' +
         '<div class="result-header">' +
           '<p class="result-header-label">您占得</p>' +
-          '<h2 class="result-hexagram-name section-title">' + escapeHtml(hd.fullName) + '</h2>' +
+          '<h2 class="result-hexagram-name section-title">' + escapeHtml(hd.fullName) +
+            (hd.symbol ? '<span class="hex-symbol">' + hd.symbol + '</span>' : '') +
+          '</h2>' +
           '<div class="result-trigram-info">' +
             '<span>上' + result.upperTrigram.nature + result.upperTrigram.symbol + ' ' + result.upperTrigram.name + '</span>' +
             '<span class="result-trigram-dot">·</span>' +
@@ -968,31 +1203,14 @@ function renderResult(container) {
           '</div>' +
         '</div>' +
 
-        '<div class="hexagram-display-row">' +
-          '<div class="hexagram-column">' +
-            '<p class="hexagram-column-label">本卦</p>' +
-            '<div class="card hexagram-box">' +
-              '<div class="hexagram-lines">' + mainLinesHtml + '</div>' +
-              '<p class="hexagram-box-name">' + escapeHtml(hd.name) + '</p>' +
-              '<p class="hexagram-box-sub">' + escapeHtml(hd.fullName) + '</p>' +
-            '</div>' +
-          '</div>' +
-          (result.changedHexagram ?
-            '<div class="hexagram-column">' +
-              '<p class="hexagram-column-label">变卦</p>' +
-              '<div class="card hexagram-box changed">' +
-                '<div class="hexagram-lines">' + changedLinesHtml + '</div>' +
-                '<p class="hexagram-box-name">' + escapeHtml(result.changedHexagram.hexagramData.name) + '</p>' +
-                '<p class="hexagram-box-sub">' + escapeHtml(result.changedHexagram.hexagramData.fullName) + '</p>' +
-              '</div>' +
-            '</div>' : ''
-          ) +
-        '</div>' +
+        headerTop +
+        paipanHtml +
 
         '<div class="card guaci-card">' +
           '<div class="guaci-label"><span class="ornament-marker">◆</span><span>卦辞</span></div>' +
           '<p class="guaci-text">「' + escapeHtml(hd.guaCi) + '」</p>' +
           (hd.summary ? '<p class="guaci-summary">' + escapeHtml(hd.summary) + '</p>' : '') +
+          (hd.overview ? '<p class="guaci-overview">' + escapeHtml(hd.overview) + '</p>' : '') +
         '</div>' +
 
         '<div class="info-stats">' +
@@ -1008,9 +1226,9 @@ function renderResult(container) {
 
         '<div class="result-actions">' +
           '<button class="btn btn-secondary" onclick="restart()">重新占卦</button>' +
-          '<button class="btn btn-primary" onclick="startAIInterpretation()">AI 智能解卦</button>' +
-          '<button class="btn btn-secondary" onclick="navigateTo(\'interpretation\')">查看基础解读</button>' +
+          '<button class="btn btn-primary" onclick="startAIInterpretation()">' + aiBtnLabel + '</button>' +
         '</div>' +
+        aiBtnHint +
       '</div>' +
     '</div>';
 }
@@ -1038,8 +1256,9 @@ function renderHexagramLinesDisplay(lines, isChanged, changingPositions) {
 
 // ===== AI 解卦加载页 =====
 function startAIInterpretation(forceRegenerate) {
-  // 已有缓存的 AI 解读且卦象未变（同一次占卦），直接展示
-  if (!forceRegenerate && state.aiInterpretation && state.aiInterpretationHexId === (state.hexagramResult && state.hexagramResult.hexagramData && state.hexagramResult.hexagramData.number)) {
+  // 如果已缓存（预加载成功）且卦象一致，直接展示
+  if (!forceRegenerate && state.aiInterpretation &&
+      state.aiInterpretationHexId === (state.hexagramResult && state.hexagramResult.hexagramData && state.hexagramResult.hexagramData.number)) {
     state.currentPage = 'ai-result';
     state.aiError = null;
     renderPage();
@@ -1062,12 +1281,10 @@ function startAIInterpretation(forceRegenerate) {
       renderPage();
     } else {
       state.aiInterpretation = text;
-      // 记录当前卦象 ID，用于判断是否是同一卦
       state.aiInterpretationHexId = state.hexagramResult && state.hexagramResult.hexagramData && state.hexagramResult.hexagramData.number;
       state.aiLoading = false;
       state.currentPage = 'ai-result';
 
-      // 把 AI 解读写回对应的历史记录，下次点击历史直接展示，避免重复调用
       if (state.currentRecordId) {
         var idx = -1;
         for (var i = 0; i < state.history.length; i++) {
@@ -1139,7 +1356,6 @@ function renderAIResult(container) {
     } else {
       buttons += '<button class="btn btn-primary" onclick="startAIInterpretation(true)">重试</button>';
     }
-    buttons += '<button class="btn btn-secondary" onclick="navigateTo(\'interpretation\')">查看基础解读</button>';
 
     container.innerHTML =
       '<div class="ai-loading-page">' +
@@ -1199,7 +1415,6 @@ function renderAIResult(container) {
 
         '<div class="interp-actions">' +
           '<button class="btn btn-secondary" onclick="navigateTo(\'result\')">返回卦象</button>' +
-          '<button class="btn btn-secondary" onclick="navigateTo(\'interpretation\')">查看基础解读</button>' +
           '<button class="btn btn-primary" onclick="navigateTo(\'donation\')">赏卦金</button>' +
         '</div>' +
       '</div>' +
@@ -1379,7 +1594,7 @@ function renderDonation(container) {
         '</div>' +
 
         '<div class="donation-actions">' +
-          '<button class="btn btn-secondary" onclick="navigateTo(\'interpretation\')">返回解读</button>' +
+          '<button class="btn btn-secondary" onclick="navigateTo(\'ai-result\')">返回解读</button>' +
           '<button class="btn btn-primary" onclick="restart()">再次占卦</button>' +
         '</div>' +
       '</div>' +

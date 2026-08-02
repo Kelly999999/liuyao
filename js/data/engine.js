@@ -158,7 +158,7 @@ function calculateHexagram(lines) {
     };
   }
 
-  return {
+  var result = {
     lines: lines,
     lowerTrigram: lowerTrigram,
     upperTrigram: upperTrigram,
@@ -167,6 +167,46 @@ function calculateHexagram(lines) {
     changedHexagram: changedHexagram,
     hasChanging: changingLines.length > 0,
   };
+
+  // ===== 专业六爻装卦（纳甲/六亲/六神/世应/卦宫/四柱/旬空/神煞）=====
+  if (typeof window !== 'undefined' && window.LiuyaoEngine) {
+    try {
+      var installLines = lines.map(function (l) {
+        return { isYang: l.isYang, isChanging: l.isChanging };
+      });
+      var pro = window.LiuyaoEngine.installHexagram(
+        upperTrigram.name, lowerTrigram.name, installLines, new Date()
+      );
+      // 生成给 AI 用的专业文本摘要
+      pro.summaryText = window.LiuyaoEngine.buildSummaryText(
+        upperTrigram.name, lowerTrigram.name,
+        { palace: pro.palace, palaceWuxing: pro.palaceWuxing, shiPos: pro.shiPos, yingPos: pro.yingPos,
+          liuChong: pro.liuChong, liuHe: pro.liuHe },
+        pro.mainLines, pro.changedMeta, pro.hasChanging !== undefined ? pro.hasChanging : (!!pro.changedLines),
+        pro.siZhu, pro.xunKong, pro.dateInfo.solar
+      );
+      // 把变卦六爻信息（如果有变）也补到 summaryText 中
+      if (pro.changedLines && pro.changedLines.length) {
+        var extra = '\n【变卦六爻】（参考未来走向）\n';
+        for (var pp = 5; pp >= 0; pp--) {
+          var C = pro.changedLines[pp];
+          extra += '  · ' + C.ganZhi + ' ' + C.zhiWuxing + ' ' + C.liuQin
+                 + (C.isShi ? ' 世' : '') + (C.isYing ? ' 应' : '')
+                 + (C.isKong ? ' 空亡' : '') + '\n';
+        }
+        pro.summaryText += extra;
+      }
+      result.proPaipan = pro;
+    } catch (e) {
+      // 装卦失败不影响主流程
+      if (window.console) console.warn('[engine] 专业装卦失败：', e);
+      result.proPaipan = null;
+    }
+  } else {
+    result.proPaipan = null;
+  }
+
+  return result;
 }
 
 /**
