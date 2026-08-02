@@ -1599,7 +1599,7 @@ function renderDonation(container) {
       '<span class="pay-action-arrow">›</span>' +
       '</button>';
     if (!ALIPAY_COLLECTION_LINK) {
-      var alipayHint = wechat ? '长按下方二维码识别' : '截屏后打开支付宝扫一扫';
+      var alipayHint = wechat ? '长按下方二维码识别' : '长按识别 或 截屏后扫码';
       paySectionHtml += '<button class="pay-action-btn alipay" onclick="scrollToQr(\'alipay-qr\')">' +
         '<span class="pay-action-icon">💙</span>' +
         '<span class="pay-action-text"><strong>支付宝</strong><small>' + alipayHint + '</small></span>' +
@@ -1621,7 +1621,7 @@ function renderDonation(container) {
           '<img src="assets/alipay.jpeg" alt="支付宝收款码" loading="lazy">' +
         '</div>' +
         '<p class="donation-code-name">💙 支付宝</p>' +
-        '<p class="donation-qr-hint">' + (wechat ? '长按二维码识别支付' : '截屏后打开支付宝扫一扫') + '</p>' +
+        '<p class="donation-qr-hint">' + (wechat ? '长按二维码识别支付' : '长按二维码识别 或 截屏后支付宝扫码') + '</p>' +
       '</div>';
     }
     qrHtml += '<div class="donation-qr-item" id="wechat-qr">' +

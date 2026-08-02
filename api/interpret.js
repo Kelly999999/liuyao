@@ -86,9 +86,9 @@ function checkRateLimit(ip) {
   record.hourly = record.hourly.filter(t => now - t < 3600_000);       // 1 小时
   record.daily = record.daily.filter(t => now - t < 86400_000);        // 24 小时
 
-  // 单 IP：每小时最多 5 次，每日最多 20 次
-  if (record.hourly.length >= 5) {
-    return { ok: false, reason: 'hourly_limit', message: '同一小时内最多问卦5次，请稍后再来。心诚方能得应。' };
+  // 单 IP：每小时最多 10 次，每日最多 20 次
+  if (record.hourly.length >= 10) {
+    return { ok: false, reason: 'hourly_limit', message: '同一小时内最多问卦10次，请稍后再来。心诚方能得应。' };
   }
   if (record.daily.length >= 20) {
     return { ok: false, reason: 'daily_limit', message: '今日问卦已达20次，请明日再来。频繁问卦，卦象不灵。' };
