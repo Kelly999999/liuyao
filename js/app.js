@@ -1623,16 +1623,16 @@ function renderDonation(container) {
       : '点击放大后长按识别，或截屏后支付宝扫码';
     if (showBothQR) {
       qrHtml += '<div class="donation-qr-item" id="alipay-qr">' +
-        '<div class="donation-qr alipay" onclick="previewQrImage(\'assets/alipay.jpeg\')">' +
-          '<img src="assets/alipay.jpeg" alt="支付宝收款码">' +
+        '<div class="donation-qr alipay">' +
+          '<img src="assets/alipay.jpeg" alt="支付宝收款码" onclick="previewQrImage(this.src)">' +
         '</div>' +
         '<p class="donation-code-name">💙 支付宝</p>' +
         '<p class="donation-qr-hint">' + qrHintAlipay + '</p>' +
       '</div>';
     }
     qrHtml += '<div class="donation-qr-item" id="wechat-qr">' +
-      '<div class="donation-qr wechat" onclick="previewQrImage(\'assets/wechat.jpeg\')">' +
-        '<img src="assets/wechat.jpeg" alt="微信收款码">' +
+      '<div class="donation-qr wechat">' +
+        '<img src="assets/wechat.jpeg" alt="微信收款码" onclick="previewQrImage(this.src)">' +
       '</div>' +
       '<p class="donation-code-name">💚 微信支付</p>' +
       '<p class="donation-qr-hint">' + qrHintWechat + '</p>' +
@@ -1730,17 +1730,22 @@ function openAlipay() {
 }
 
 function previewQrImage(src) {
+  var old = document.getElementById('qr-preview-overlay');
+  if (old) old.remove();
   var overlay = document.createElement('div');
-  overlay.className = 'qr-preview-overlay';
+  overlay.id = 'qr-preview-overlay';
+  overlay.style.cssText =
+    'position:fixed;top:0;left:0;width:100%;height:100%;' +
+    'background:rgba(0,0,0,0.9);z-index:99999;' +
+    'display:-webkit-flex;display:flex;-webkit-flex-direction:column;flex-direction:column;' +
+    '-webkit-align-items:center;align-items:center;-webkit-justify-content:center;justify-content:center;';
   overlay.innerHTML =
-    '<div class="qr-preview-inner">' +
-      '<img src="' + src + '" alt="收款码">' +
-      '<p class="qr-preview-tip">长按二维码识别支付</p>' +
-      '<button class="qr-preview-close" onclick="this.parentElement.parentElement.remove()">关闭</button>' +
-    '</div>';
-  overlay.addEventListener('click', function (e) {
-    if (e.target === overlay) overlay.remove();
-  });
+    '<img src="' + src + '" style="max-width:80vw;max-height:65vh;width:auto;height:auto;' +
+      'border-radius:12px;background:#fff;padding:10px;-webkit-touch-callout:default;" alt="收款码">' +
+    '<p style="color:rgba(255,255,255,0.8);font-size:0.9rem;margin-top:1.2rem;text-align:center;">长按二维码识别支付</p>' +
+    '<button onclick="document.getElementById(\'qr-preview-overlay\').remove()" style="' +
+      'margin-top:1.5rem;padding:0.5rem 1.5rem;border:1px solid rgba(255,255,255,0.3);' +
+      'border-radius:6px;background:transparent;color:#fff;font-size:0.9rem;min-height:44px;cursor:pointer;">关闭</button>';
   document.body.appendChild(overlay);
 }
 
