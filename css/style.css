@@ -2270,6 +2270,79 @@ body {
   line-height: 1.6;
 }
 
+/* 二维码点击放大手势 */
+.donation-qr {
+  cursor: pointer;
+  position: relative;
+}
+.donation-qr::after {
+  content: '🔍';
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  font-size: 0.85rem;
+  opacity: 0.4;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+.donation-qr:hover::after {
+  opacity: 0.7;
+}
+
+/* ===== 二维码全屏预览 ===== */
+.qr-preview-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.2s ease-out;
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.qr-preview-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 2rem;
+}
+.qr-preview-inner img {
+  max-width: 80vw;
+  max-height: 65vh;
+  width: auto;
+  height: auto;
+  border-radius: 12px;
+  background: #fff;
+  padding: 8px;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: default;
+}
+.qr-preview-tip {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.9rem;
+  text-align: center;
+  line-height: 1.6;
+}
+.qr-preview-close {
+  padding: 0.5rem 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: 0.9rem;
+  cursor: pointer;
+  min-height: 44px;
+}
+.qr-preview-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
 /* ===== History Page ===== */
 .history-page {
   min-height: calc(100vh - 3.5rem);

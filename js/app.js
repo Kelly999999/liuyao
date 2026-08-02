@@ -1615,21 +1615,27 @@ function renderDonation(container) {
 
   if (mobile) {
     // 移动端：竖向排列 + 提示文字
+    var qrHintWechat = wechat
+      ? '点击放大后长按识别二维码'
+      : '点击放大后长按识别，或保存图片到微信扫一扫';
+    var qrHintAlipay = wechat
+      ? '点击放大后长按识别二维码'
+      : '点击放大后长按识别，或截屏后支付宝扫码';
     if (showBothQR) {
       qrHtml += '<div class="donation-qr-item" id="alipay-qr">' +
-        '<div class="donation-qr alipay">' +
-          '<img src="assets/alipay.jpeg" alt="支付宝收款码" loading="lazy">' +
+        '<div class="donation-qr alipay" onclick="previewQrImage(\'assets/alipay.jpeg\')">' +
+          '<img src="assets/alipay.jpeg" alt="支付宝收款码">' +
         '</div>' +
         '<p class="donation-code-name">💙 支付宝</p>' +
-        '<p class="donation-qr-hint">' + (wechat ? '长按二维码识别支付' : '长按二维码识别 或 截屏后支付宝扫码') + '</p>' +
+        '<p class="donation-qr-hint">' + qrHintAlipay + '</p>' +
       '</div>';
     }
     qrHtml += '<div class="donation-qr-item" id="wechat-qr">' +
-      '<div class="donation-qr wechat">' +
-        '<img src="assets/wechat.jpeg" alt="微信收款码" loading="lazy">' +
+      '<div class="donation-qr wechat" onclick="previewQrImage(\'assets/wechat.jpeg\')">' +
+        '<img src="assets/wechat.jpeg" alt="微信收款码">' +
       '</div>' +
       '<p class="donation-code-name">💚 微信支付</p>' +
-      '<p class="donation-qr-hint">' + (wechat ? '长按二维码识别支付' : '截屏后打开微信扫一扫') + '</p>' +
+      '<p class="donation-qr-hint">' + qrHintWechat + '</p>' +
     '</div>';
   } else {
     // 桌面端：并排
@@ -1654,7 +1660,7 @@ function renderDonation(container) {
   // ---- 提示文字（微信浏览器特殊处理）----
   var noteHtml = '<div class="donation-note">' +
     '<p>金额随心，多少皆是心意</p>' +
-    (mobile && wechat ? '<p class="donation-note-wechat">💡 在微信中可直接<span style="color:var(--gold-dark)">长按</span>下方二维码识别支付</p>' : '') +
+    (mobile && wechat ? '<p class="donation-note-wechat">💡 点击二维码放大后，<span style="color:var(--gold-dark)">长按</span>图片即可识别支付</p>' : '') +
     '</div>';
 
   container.innerHTML =
@@ -1721,6 +1727,21 @@ function openAlipay() {
   if (ALIPAY_COLLECTION_LINK) {
     window.location.href = ALIPAY_COLLECTION_LINK;
   }
+}
+
+function previewQrImage(src) {
+  var overlay = document.createElement('div');
+  overlay.className = 'qr-preview-overlay';
+  overlay.innerHTML =
+    '<div class="qr-preview-inner">' +
+      '<img src="' + src + '" alt="收款码">' +
+      '<p class="qr-preview-tip">长按二维码识别支付</p>' +
+      '<button class="qr-preview-close" onclick="this.parentElement.parentElement.remove()">关闭</button>' +
+    '</div>';
+  overlay.addEventListener('click', function (e) {
+    if (e.target === overlay) overlay.remove();
+  });
+  document.body.appendChild(overlay);
 }
 
 // ===== 历史页 =====
