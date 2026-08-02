@@ -1415,7 +1415,8 @@ function renderAIResult(container) {
 
         '<div class="interp-actions">' +
           '<button class="btn btn-secondary" onclick="navigateTo(\'result\')">返回卦象</button>' +
-          '<button class="btn btn-primary" onclick="navigateTo(\'donation\')">赏卦金</button>' +
+          '<button class="btn btn-primary" onclick="shareHexagram()">分享卦象</button>' +
+          '<button class="btn btn-secondary" onclick="navigateTo(\'donation\')">赏卦金</button>' +
         '</div>' +
       '</div>' +
     '</div>';
@@ -1426,6 +1427,185 @@ function renderAIResult(container) {
 function showApiKeyModal() {}
 function hideApiKeyModal() {}
 function saveApiKey() {}
+
+// ===== 分享卦象 =====
+function extractShareQuote(text) {
+  if (!text) return '卦有所示，心有所感。';
+  // 取最后一段有实质内容的文字
+  var paras = text.replace(/\*\*/g, '').split(/\n\n+/).filter(function (p) {
+    return p.trim().length > 10;
+  });
+  if (paras.length === 0) return '卦有所示，心有所感。';
+  var last = paras[paras.length - 1].trim();
+  // 截取前 80 字
+  if (last.length > 80) last = last.substring(0, 78) + '…';
+  return last;
+}
+
+function shareHexagram() {
+  var result = state.hexagramResult;
+  if (!result || !result.hexagramData) return;
+  var hd = result.hexagramData;
+  var lines = result.lines;
+  var changingLines = result.changingLines || [];
+  var quote = extractShareQuote(state.aiInterpretation);
+  var changedName = result.changedHexagram && result.changedHexagram.hexagramData
+    ? result.changedHexagram.hexagramData.name : '';
+
+  var W = 750, H = 1000;
+  var canvas = document.createElement('canvas');
+  canvas.width = W;
+  canvas.height = H;
+  var ctx = canvas.getContext('2d');
+
+  // 背景渐变
+  var bg = ctx.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, '#1a1410');
+  bg.addColorStop(0.5, '#2a1f17');
+  bg.addColorStop(1, '#1a1410');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // 金色边框
+  ctx.strokeStyle = 'rgba(201,169,110,0.4)';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(24, 24, W - 48, H - 48);
+  ctx.strokeStyle = 'rgba(201,169,110,0.2)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(32, 32, W - 64, H - 64);
+
+  // 顶部标识
+  ctx.fillStyle = 'rgba(201,169,110,0.6)';
+  ctx.font = '20px "Noto Serif SC", serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('六 爻 问 卦', W / 2, 80);
+
+  // 卦名
+  ctx.fillStyle = '#e0cca0';
+  ctx.font = 'bold 44px "Noto Serif SC", serif';
+  ctx.fillText(hd.name, W / 2, 145);
+
+  // 卦全名
+  ctx.fillStyle = 'rgba(201,169,110,0.5)';
+  ctx.font = '18px "Noto Serif SC", serif';
+  ctx.fillText(hd.fullName || '', W / 2, 175);
+
+  // 卦象线条
+  var lineY = 230;
+  var lineW = 280;
+  var lineGap = 26;
+  var lineX = (W - lineW) / 2;
+  for (var i = 0; i < 6; i++) {
+    var y = lineY + i * lineGap;
+    var isYang = lines[i].isYang;
+    var isChanging = changingLines.indexOf(i) >= 0;
+    ctx.fillStyle = isChanging ? '#c95a3a' : '#e0cca0';
+    if (isYang) {
+      ctx.fillRect(lineX, y, lineW, 10);
+    } else {
+      ctx.fillRect(lineX, y, lineW / 2 - 8, 10);
+      ctx.fillRect(lineX + lineW / 2 + 8, y, lineW / 2 - 8, 10);
+    }
+    // 动爻标记
+    if (isChanging) {
+      ctx.fillStyle = '#c95a3a';
+      ctx.font = '14px "Noto Serif SC", serif';
+      ctx.fillText(isYang ? '○' : '×', W / 2, y + 9);
+    }
+  }
+
+  // 变卦提示
+  if (changedName) {
+    ctx.fillStyle = 'rgba(201,169,110,0.5)';
+    ctx.font = '16px "Noto Serif SC", serif';
+    ctx.fillText('变卦 → ' + changedName, W / 2, lineY + 6 * lineGap + 20);
+  }
+
+  // 分割线
+  var divY = lineY + 6 * lineGap + 55;
+  ctx.strokeStyle = 'rgba(201,169,110,0.25)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(W / 2 - 60, divY);
+  ctx.lineTo(W / 2 + 60, divY);
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(201,169,110,0.4)';
+  ctx.font = '14px serif';
+  ctx.fillText('✦', W / 2, divY + 5);
+
+  // 解语
+  ctx.fillStyle = 'rgba(224,204,159,0.85)';
+  ctx.font = '22px "Noto Serif SC", serif';
+  ctx.textAlign = 'center';
+  wrapText(ctx, quote, W / 2, divY + 50, W - 120, 34);
+
+  // 底部
+  ctx.fillStyle = 'rgba(201,169,110,0.35)';
+  ctx.font = '15px "Noto Serif SC", serif';
+  ctx.fillText('六爻问卦 · 周易易经占卜', W / 2, H - 80);
+  ctx.fillStyle = 'rgba(201,169,110,0.25)';
+  ctx.font = '13px "Noto Serif SC", serif';
+  ctx.fillText('以上解读仅供参考 · 人生的方向始终掌握在自己手中', W / 2, H - 55);
+
+  // 转为图片
+  var dataUrl = canvas.toDataURL('image/png');
+
+  // 尝试 Web Share API
+  if (navigator.share && navigator.canShare) {
+    canvas.toBlob(function (blob) {
+      var file = new File([blob], '六爻卦象.png', { type: 'image/png' });
+      if (navigator.canShare({ files: [file] })) {
+        navigator.share({
+          files: [file],
+          title: '六爻问卦 · ' + hd.name,
+          text: '我用AI六爻问了一卦，结果很有启发'
+        }).catch(function () {});
+      } else {
+        showShareImage(dataUrl);
+      }
+    }, 'image/png');
+  } else {
+    showShareImage(dataUrl);
+  }
+}
+
+function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+  var chars = text.split('');
+  var line = '';
+  var lines = [];
+  for (var i = 0; i < chars.length; i++) {
+    var test = line + chars[i];
+    if (ctx.measureText(test).width > maxWidth && line.length > 0) {
+      lines.push(line);
+      line = chars[i];
+    } else {
+      line = test;
+    }
+  }
+  if (line) lines.push(line);
+  for (var j = 0; j < lines.length; j++) {
+    ctx.fillText(lines[j], x, y + j * lineHeight);
+  }
+}
+
+function showShareImage(dataUrl) {
+  var old = document.getElementById('share-overlay');
+  if (old) old.remove();
+  var overlay = document.createElement('div');
+  overlay.id = 'share-overlay';
+  overlay.style.cssText =
+    'position:fixed;top:0;left:0;width:100%;height:100%;' +
+    'background:rgba(0,0,0,0.92);z-index:99999;' +
+    'display:-webkit-flex;display:flex;-webkit-flex-direction:column;flex-direction:column;' +
+    '-webkit-align-items:center;align-items:center;-webkit-justify-content:center;justify-content:center;';
+  overlay.innerHTML =
+    '<img src="' + dataUrl + '" style="max-width:85vw;max-height:72vh;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.4);" alt="卦象分享图">' +
+    '<p style="color:rgba(255,255,255,0.7);font-size:0.9rem;margin-top:1.2rem;text-align:center;">长按图片保存到相册，即可分享给朋友</p>' +
+    '<button onclick="document.getElementById(\'share-overlay\').remove()" style="' +
+      'margin-top:1.2rem;padding:0.5rem 1.5rem;border:1px solid rgba(255,255,255,0.3);' +
+      'border-radius:6px;background:transparent;color:#fff;font-size:0.9rem;min-height:44px;cursor:pointer;">关闭</button>';
+  document.body.appendChild(overlay);
+}
 
 // ===== 解卦页 =====
 function renderInterpretation(container) {
