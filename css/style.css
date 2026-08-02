@@ -2114,6 +2114,162 @@ body {
   justify-content: center;
 }
 
+/* ===== 赞赏页：建议金额 ===== */
+.donation-amounts {
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+.donation-amount-title {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  color: var(--gold-dark);
+  margin-bottom: 1rem;
+  letter-spacing: 0.15em;
+}
+.amount-chips {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.6rem;
+  margin-bottom: 0.75rem;
+}
+.amount-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.6rem 0.4rem;
+  border: 1.5px solid rgba(201, 169, 110, 0.3);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  transition: all 0.2s;
+  min-height: 44px;
+}
+.amount-chip:hover {
+  border-color: var(--gold);
+  background: rgba(224, 204, 159, 0.12);
+}
+.amount-chip.active {
+  border-color: var(--gold);
+  background: linear-gradient(135deg, rgba(224, 204, 159, 0.25), rgba(255, 255, 255, 0.8));
+  box-shadow: 0 2px 12px rgba(201, 169, 110, 0.2);
+}
+.amount-val {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--gold-dark);
+}
+.amount-desc {
+  font-size: 0.68rem;
+  color: rgba(44, 24, 16, 0.45);
+}
+.amount-chip.active .amount-desc {
+  color: var(--gold-dark);
+}
+.donation-amount-selected {
+  font-size: 0.82rem;
+  color: rgba(44, 24, 16, 0.6);
+  margin-top: 0.5rem;
+}
+.donation-amount-selected strong {
+  color: var(--gold-dark);
+}
+
+/* ===== 赞赏页：支付按钮（移动端）===== */
+.pay-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-bottom: 1.2rem;
+}
+.pay-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  width: 100%;
+  padding: 0.8rem 1rem;
+  border: 1.5px solid rgba(201, 169, 110, 0.3);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  transition: all 0.2s;
+  min-height: 52px;
+  text-align: left;
+}
+.pay-action-btn:hover {
+  border-color: var(--gold);
+  background: rgba(224, 204, 159, 0.1);
+}
+.pay-action-btn.alipay {
+  border-color: rgba(0, 160, 233, 0.25);
+}
+.pay-action-btn.alipay:hover {
+  border-color: #00a0e9;
+  background: rgba(0, 160, 233, 0.05);
+}
+.pay-action-btn.wechat {
+  border-color: rgba(9, 187, 7, 0.25);
+}
+.pay-action-btn.wechat:hover {
+  border-color: #09bb07;
+  background: rgba(9, 187, 7, 0.05);
+}
+.pay-action-icon {
+  font-size: 1.4rem;
+  flex-shrink: 0;
+}
+.pay-action-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+.pay-action-text strong {
+  font-size: 0.95rem;
+  color: rgba(44, 24, 16, 0.85);
+}
+.pay-action-text small {
+  font-size: 0.72rem;
+  color: rgba(44, 24, 16, 0.45);
+}
+.pay-action-arrow {
+  font-size: 1.2rem;
+  color: rgba(44, 24, 16, 0.25);
+  flex-shrink: 0;
+}
+
+/* ===== 赞赏页：二维码列表（移动端竖排）===== */
+.donation-qr-list {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+.donation-qr-item {
+  text-align: center;
+  max-width: 240px;
+  width: 100%;
+}
+.donation-qr-item .donation-qr {
+  max-width: 220px;
+  margin: 0 auto 0.5rem;
+}
+.donation-qr-hint {
+  font-size: 0.75rem;
+  color: rgba(44, 24, 16, 0.4);
+  margin-top: 0.25rem;
+  line-height: 1.5;
+}
+.donation-code-item .donation-qr-hint {
+  margin-top: 0.3rem;
+}
+.donation-note-wechat {
+  font-size: 0.78rem !important;
+  color: rgba(44, 24, 16, 0.5) !important;
+  margin-top: 0.5rem;
+  line-height: 1.6;
+}
+
 /* ===== History Page ===== */
 .history-page {
   min-height: calc(100vh - 3.5rem);
@@ -3035,36 +3191,26 @@ body {
 
   /* ---- Donation ---- */
   .donation-page {
-    padding: 2rem 0.9rem 3rem;
+    padding: 1.5rem 0.9rem 3rem;
     min-height: calc(100vh - 3rem);
-  }
-  .donation-title {
-    font-size: 1.4rem;
-    margin-bottom: 2rem;
   }
   .donation-card {
     padding: 1.2rem 1rem;
     max-width: 100%;
     width: 100%;
   }
-  .pay-tabs {
-    gap: 0.4rem;
-    margin-bottom: 1rem;
-  }
-  .pay-tab {
-    flex: 1;
-    font-size: 0.85rem;
-    padding: 0.5rem 0.6rem;
-    min-height: 40px;
-  }
-  .qr-placeholder {
-    width: 180px;
-    height: 180px;
-    margin: 0.5rem auto 1rem;
-  }
   .donation-amount-title {
     font-size: 0.85rem;
   }
+  .amount-chips {
+    gap: 0.45rem;
+  }
+  .amount-chip {
+    padding: 0.5rem 0.3rem;
+    min-height: 44px;
+  }
+  .amount-val { font-size: 0.88rem; }
+  .amount-desc { font-size: 0.62rem; }
   .donation-note p {
     font-size: 0.82rem;
     line-height: 1.7;

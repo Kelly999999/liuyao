@@ -1547,7 +1547,116 @@ function renderInterpretation(container) {
 }
 
 // ===== 打赏页 =====
+// ===== 赞赏配置 =====
+// 支付宝收款链接：在支付宝APP「收付款 → 二维码收款 → 保存二维码」后，
+// 用任意扫码工具解析图片中的链接（形如 https://qr.alipay.com/xxxxx）。
+// 填入后移动端可一键拉起支付宝APP，大幅提升转化率。留空则回退到二维码。
+var ALIPAY_COLLECTION_LINK = '';
+
+function isMobileDevice() {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+}
+function isWeChatBrowser() {
+  return /MicroMessenger/i.test(navigator.userAgent);
+}
+
 function renderDonation(container) {
+  var mobile = isMobileDevice();
+  var wechat = isWeChatBrowser();
+
+  // 建议打赏金额
+  var amounts = [
+    { val: '2.88', desc: '心领' },
+    { val: '5.88', desc: '顺意' },
+    { val: '8.88', desc: '发发发' },
+    { val: '18.88', desc: '要发发' },
+    { val: '66.88', desc: '顺顺利利' },
+    { val: '88.88', desc: '大吉大利' },
+  ];
+  var amountsHtml = amounts.map(function (a) {
+    return '<button class="amount-chip" data-amount="' + a.val + '" onclick="selectDonationAmount(this)">' +
+      '<span class="amount-val">¥' + a.val + '</span>' +
+      '<span class="amount-desc">' + a.desc + '</span>' +
+      '</button>';
+  }).join('');
+
+  // ---- 支付方式区 ----
+  var paySectionHtml = '';
+
+  if (mobile) {
+    // 移动端：按钮优先
+    if (ALIPAY_COLLECTION_LINK) {
+      paySectionHtml += '<button class="pay-action-btn alipay" onclick="openAlipay()">' +
+        '<span class="pay-action-icon">💙</span>' +
+        '<span class="pay-action-text"><strong>支付宝支付</strong><small>一键拉起支付宝APP</small></span>' +
+        '<span class="pay-action-arrow">›</span>' +
+        '</button>';
+    }
+    var wechatHint = wechat ? '长按下方二维码识别' : '截屏后打开微信扫一扫';
+    paySectionHtml += '<button class="pay-action-btn wechat" onclick="scrollToQr(\'wechat-qr\')">' +
+      '<span class="pay-action-icon">💚</span>' +
+      '<span class="pay-action-text"><strong>微信支付</strong><small>' + wechatHint + '</small></span>' +
+      '<span class="pay-action-arrow">›</span>' +
+      '</button>';
+    if (!ALIPAY_COLLECTION_LINK) {
+      var alipayHint = wechat ? '长按下方二维码识别' : '截屏后打开支付宝扫一扫';
+      paySectionHtml += '<button class="pay-action-btn alipay" onclick="scrollToQr(\'alipay-qr\')">' +
+        '<span class="pay-action-icon">💙</span>' +
+        '<span class="pay-action-text"><strong>支付宝</strong><small>' + alipayHint + '</small></span>' +
+        '<span class="pay-action-arrow">›</span>' +
+        '</button>';
+    }
+    paySectionHtml = '<div class="pay-actions">' + paySectionHtml + '</div>';
+  }
+
+  // ---- 二维码区 ----
+  var qrHtml = '';
+  var showBothQR = !mobile || !ALIPAY_COLLECTION_LINK;
+
+  if (mobile) {
+    // 移动端：竖向排列 + 提示文字
+    if (showBothQR) {
+      qrHtml += '<div class="donation-qr-item" id="alipay-qr">' +
+        '<div class="donation-qr alipay">' +
+          '<img src="assets/alipay.jpeg" alt="支付宝收款码" loading="lazy">' +
+        '</div>' +
+        '<p class="donation-code-name">💙 支付宝</p>' +
+        '<p class="donation-qr-hint">' + (wechat ? '长按二维码识别支付' : '截屏后打开支付宝扫一扫') + '</p>' +
+      '</div>';
+    }
+    qrHtml += '<div class="donation-qr-item" id="wechat-qr">' +
+      '<div class="donation-qr wechat">' +
+        '<img src="assets/wechat.jpeg" alt="微信收款码" loading="lazy">' +
+      '</div>' +
+      '<p class="donation-code-name">💚 微信支付</p>' +
+      '<p class="donation-qr-hint">' + (wechat ? '长按二维码识别支付' : '截屏后打开微信扫一扫') + '</p>' +
+    '</div>';
+  } else {
+    // 桌面端：并排
+    qrHtml = '<div class="donation-code-item">' +
+      '<div class="donation-qr wechat">' +
+        '<img src="assets/wechat.jpeg" alt="微信收款码" loading="lazy">' +
+      '</div>' +
+      '<p class="donation-code-name">💚 微信支付</p>' +
+      '<p class="donation-qr-hint">打开微信/支付宝扫一扫</p>' +
+    '</div>' +
+    '<div class="donation-code-item">' +
+      '<div class="donation-qr alipay">' +
+        '<img src="assets/alipay.jpeg" alt="支付宝收款码" loading="lazy">' +
+      '</div>' +
+      '<p class="donation-code-name">💙 支付宝</p>' +
+      '<p class="donation-qr-hint">打开支付宝扫一扫</p>' +
+    '</div>';
+  }
+
+  var qrSectionHtml = (mobile ? '<div class="donation-qr-list">' : '<div class="donation-grid">') + qrHtml + '</div>';
+
+  // ---- 提示文字（微信浏览器特殊处理）----
+  var noteHtml = '<div class="donation-note">' +
+    '<p>金额随心，多少皆是心意</p>' +
+    (mobile && wechat ? '<p class="donation-note-wechat">💡 在微信中可直接<span style="color:var(--gold-dark)">长按</span>下方二维码识别支付</p>' : '') +
+    '</div>';
+
   container.innerHTML =
     '<div class="donation-page">' +
       '<div class="donation-inner">' +
@@ -1560,38 +1669,31 @@ function renderDonation(container) {
         '<div class="card donation-tradition">' +
           '<p class="tradition-title">✦ 关于卦金 ✦</p>' +
           '<p class="tradition-text">' +
-            '古有云：「卦不空出，术不空施」。'+
-            '自古问卜之礼，皆需奉上卦金，非为财货之贵，而在<strong>心念之诚</strong>。'+
-            '心诚则灵，无诚则应之不真。'+
+            '古有云：「卦不空出，术不空施」。' +
+            '自古问卜之礼，皆需奉上卦金，非为财货之贵，而在<strong>心念之诚</strong>。' +
+            '心诚则灵，无诚则应之不真。' +
           '</p>' +
           '<p class="tradition-text" style="margin-top:0.75rem">' +
-            '此礼一奉，一为敬天地卦象之灵；'+
-            '二为谢解卦之劳；'+
-            '三为你自己心中的这份「郑重」——郑重问，方能郑重待。'+
+            '此礼一奉，一为敬天地卦象之灵；' +
+            '二为谢解卦之劳；' +
+            '三为你自己心中的这份「郑重」——郑重问，方能郑重待。' +
           '</p>' +
         '</div>' +
 
-        '<div class="card donation-codes">' +
-          '<div class="donation-grid">' +
-            '<div class="donation-code-item">' +
-              '<div class="donation-qr wechat">' +
-                '<img src="assets/wechat.jpeg" alt="微信收款码" loading="lazy">' +
-              '</div>' +
-              '<p class="donation-code-name">💚 微信支付</p>' +
-            '</div>' +
-            '<div class="donation-code-item">' +
-              '<div class="donation-qr alipay">' +
-                '<img src="assets/alipay.jpeg" alt="支付宝收款码" loading="lazy">' +
-              '</div>' +
-              '<p class="donation-code-name">💙 支付宝</p>' +
-            '</div>' +
-          '</div>' +
+        // 建议金额
+        '<div class="card donation-amounts">' +
+          '<p class="donation-amount-title">✦ 随心奉金 ✦</p>' +
+          '<div class="amount-chips">' + amountsHtml + '</div>' +
+          '<p class="donation-amount-selected" id="amount-selected" style="display:none">已选择 <strong>¥<span id="selected-amount">0</span></strong>，请通过下方方式支付</p>' +
         '</div>' +
 
-        '<div class="donation-note">' +
-          '<p>金额随心，多少皆是心意<br>' +
-          '<span style="color:var(--gold-dark);font-size:0.8rem">✦ 6.6 / 8.8 / 16.6 / 66.6 皆为吉数 ✦</span></p>' +
+        // 支付方式（移动端按钮 / 桌面端二维码）
+        '<div class="card donation-codes">' +
+          (mobile ? paySectionHtml : '') +
+          qrSectionHtml +
         '</div>' +
+
+        noteHtml +
 
         '<div class="donation-actions">' +
           '<button class="btn btn-secondary" onclick="navigateTo(\'ai-result\')">返回解读</button>' +
@@ -1599,6 +1701,26 @@ function renderDonation(container) {
         '</div>' +
       '</div>' +
     '</div>';
+}
+
+function selectDonationAmount(btn) {
+  document.querySelectorAll('.amount-chip').forEach(function (c) { c.classList.remove('active'); });
+  btn.classList.add('active');
+  var amt = btn.getAttribute('data-amount');
+  var sel = document.getElementById('amount-selected');
+  var span = document.getElementById('selected-amount');
+  if (sel && span) { span.textContent = amt; sel.style.display = 'block'; }
+}
+
+function scrollToQr(id) {
+  var el = document.getElementById(id);
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function openAlipay() {
+  if (ALIPAY_COLLECTION_LINK) {
+    window.location.href = ALIPAY_COLLECTION_LINK;
+  }
 }
 
 // ===== 历史页 =====
